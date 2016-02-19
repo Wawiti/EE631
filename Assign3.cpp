@@ -268,10 +268,79 @@ void task4(String Lfilename, String Rfilename, String Sfilename) {
 	imwrite("Task4Left.bmp", OutImL);
 	imwrite("Task4Right.bmp", OutImR);
 
+	FileStorage fs("StereoRectification.yaml", FileStorage::WRITE);
+	fs << "R1" << R1;
+	fs << "R2" << R2;
+	fs << "P1" << P1;
+	fs << "P2" << P2;
+	fs << "Q" << Q;
+
 	Mat Difference;
 	absdiff(OutImL, OutImR, Difference);
 
 	imwrite("Task4Diff.bmp", Difference);
+}
+
+//===================== Task 5 Function ========================
+// Function to undistort and rectify images
+void task5(String Lfilename, String Rfilename, String Rectfilename) {
+	Mat ImLeft, ImLeftUndis, ImRight, ImRightUndis, OutImL, OutImR;
+	Mat LCamMat, RCamMat, LDisCoef, RDisCoef;
+	Mat R1, R2, P1, P2;
+
+	vector<Point2f> Lcorners, Rcorners;
+
+	FileStorage fs1(Lfilename, FileStorage::READ);
+	FileStorage fs2(Rfilename, FileStorage::READ);
+	FileStorage fs3(Rectfilename, FileStorage::READ);
+
+	fs1["cameraMatrix"] >> LCamMat;
+	fs1["distCoeffs"] >> LDisCoef;
+	fs2["cameraMatrix"] >> RCamMat;
+	fs2["distCoeffs"] >> RDisCoef;
+	fs3["R1"] >> R1;
+	fs3["R2"] >> R2;
+	fs3["P1"] >> P1;
+	fs3["P1"] >> P2;
+
+	fs1.release();
+	fs2.release();
+	fs3.release();
+
+	ImLeft = imread("CalibrationImages\\StereoL2.bmp", CV_LOAD_IMAGE_COLOR);
+	ImRight = imread("CalibrationImages\\StereoR2.bmp", CV_LOAD_IMAGE_COLOR);
+
+	Lcorners = findCornersSingleImage(ImLeft);
+	Rcorners = findCornersSingleImage(ImRight);
+	
+	vector<Point2f> LPoints, RPoints, LPointsOut, RPointsOut;
+	LPoints.push_back(Lcorners[6]);
+	LPoints.push_back(Lcorners[12]);
+	LPoints.push_back(Lcorners[21]);
+	LPoints.push_back(Lcorners[40]);
+
+	RPoints.push_back(Rcorners[6]);
+	RPoints.push_back(Rcorners[12]);
+	RPoints.push_back(Rcorners[21]);
+	RPoints.push_back(Rcorners[40]);
+
+	circle(OutImL, LPoints[0], 4, Scalar(255, 0, 0), 2);
+	circle(OutImL, LPoints[1], 4, Scalar(255, 0, 0), 2);
+	circle(OutImL, LPoints[2], 4, Scalar(255, 0, 0), 2);
+	circle(OutImL, LPoints[3], 4, Scalar(255, 0, 0), 2);
+	circle(OutImR, RPoints[0], 4, Scalar(255, 0, 0), 2);
+	circle(OutImR, RPoints[1], 4, Scalar(255, 0, 0), 2);
+	circle(OutImR, RPoints[2], 4, Scalar(255, 0, 0), 2);
+	circle(OutImR, RPoints[3], 4, Scalar(255, 0, 0), 2);
+
+	undistortPoints(LPoints, OutImL, LCamMat, LDisCoef, R1, P1);
+	undistortPoints(RPoints, OutImR, RCamMat, RDisCoef, R2, P2);
+
+	vector<Point3f> Left3D, Right3D;
+	for (int i = 0; i < 4; i++) {
+		Left3D.push_back(Point3f(OutImL[i].x, OutImL[i].y, OutImL[i].x - OutImR[i].x));
+		Right3D.push_back(Point3f(OutImR[i].x, OutImR[i].y, OutImL[i].x - OutImR[i].x));
+	}
 }
 
 //======================== Main Loop ===========================
@@ -282,20 +351,20 @@ int main() {
 
 	// --------------- PROCESS ALL IMAGES ---------------------------
 	cout << "Starting Task 1: Calibrating Left and Right Cameras" << endl;
-	//task1(numImLR, "LeftCameraParameters.yaml", "Left");
-	//task1(numImLR, "RightCameraParameters.yaml", "Right");
+	task1(numImLR, "LeftCameraParameters.yaml", "Left");
+	task1(numImLR, "RightCameraParameters.yaml", "Right");
 
 	cout << "Starting Task 2: Calibrating Stereo System" << endl;
-	//task2("StereoL", "StereoR", numImStereo, "StereoCameraParameters.yaml", "LeftCameraParameters.yaml", "RightCameraParameters.yaml", dim);
+	task2("StereoL", "StereoR", numImStereo, "StereoCameraParameters.yaml", "LeftCameraParameters.yaml", "RightCameraParameters.yaml", dim);
 
 	cout << "Starting Task 3: Drawing Epipolar Lines" << endl;
-	//task3("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
+	task3("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
 
 	cout << "Starting Task 4: Rectifying Images" << endl;
-	//task4("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
+	task4("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
 
-	//cout << "Starting Task 5" << endl;
-	//task5();
+	cout << "Starting Task 5: Calculating 3D Information" << endl;
+	task5("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoRectification.yaml");
 
 	//system("pause");
 	return 0;
