@@ -250,6 +250,9 @@ void task4(String Lfilename, String Rfilename, String Sfilename) {
 	ImLeft = imread("CalibrationImages\\StereoL1.bmp", CV_LOAD_IMAGE_COLOR);
 	ImRight = imread("CalibrationImages\\StereoR1.bmp", CV_LOAD_IMAGE_COLOR);
 
+	imwrite("Task4Left.bmp", ImLeft);
+	imwrite("Task4Right.bmp", ImRight);
+
 	Mat R1, R2, P1, P2, Q;
 	stereoRectify(LCamMat, LDisCoef, RCamMat, RDisCoef, Size(640, 480), R, T, R1, R2, P1, P2, Q);
 
@@ -265,8 +268,8 @@ void task4(String Lfilename, String Rfilename, String Sfilename) {
 		line(OutImR, Point2f(0, i), Point2f(639, i), Scalar(255,0,0));
 	}
 
-	imwrite("Task4Left.bmp", OutImL);
-	imwrite("Task4Right.bmp", OutImR);
+	imwrite("Task4LeftUndist.bmp", OutImL);
+	imwrite("Task4RightUndist.bmp", OutImR);
 
 	FileStorage fs("4- StereoRectification.yaml", FileStorage::WRITE);
 	fs << "R1" << R1;
@@ -275,10 +278,18 @@ void task4(String Lfilename, String Rfilename, String Sfilename) {
 	fs << "P2" << P2;
 	fs << "Q" << Q;
 
-	Mat Difference;
+	Mat DifferenceOrig, Difference, DiffL, DiffR;
+	absdiff(ImLeft, ImRight, DifferenceOrig);
 	absdiff(OutImL, OutImR, Difference);
 
+	imwrite("Task4DiffOrig.bmp", DifferenceOrig);
 	imwrite("Task4Diff.bmp", Difference);
+
+	absdiff(ImLeft, OutImL, DiffL);
+	absdiff(ImRight, OutImR, DiffR);
+
+	imwrite("Task4DiffL.bmp", DiffL);
+	imwrite("Task4DiffR.bmp", DiffR);
 }
 
 
@@ -379,10 +390,10 @@ int main() {
 	//task3("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "2- StereoCameraParameters.yaml");
 
 	cout << "Starting Task 4: Rectifying Images" << endl;
-	//task4("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "2- StereoCameraParameters.yaml");
+	task4("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "2- StereoCameraParameters.yaml");
 
 	cout << "Starting Task 5: Calculating 3D Information" << endl;
-	task5("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "4- StereoRectification.yaml");
+	//task5("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "4- StereoRectification.yaml");
 
 	//system("pause");
 	return 0;
