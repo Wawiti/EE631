@@ -169,8 +169,8 @@ void task3(String Lfilename, String Rfilename, String Sfilename) {
 	fs2.release();
 	fs3.release();
 
-	ImLeft = loadImage("CalibrationImages\\StereoL", 0, ".bmp");
-	ImRight = loadImage("CalibrationImages\\StereoR", 0, ".bmp");
+	ImLeft = loadImage("StereoL", 0, ".bmp");
+	ImRight = loadImage("StereoR", 0, ".bmp");
 
 	undistort(ImLeft, ImLeftUndis, LCamMat, LDisCoef);
 	undistort(ImRight, ImRightUndis, RCamMat, RDisCoef);
@@ -282,23 +282,21 @@ int main() {
 
 	// --------------- PROCESS ALL IMAGES ---------------------------
 	cout << "Starting Task 1: Calibrating Left and Right Cameras" << endl;
-	task1(numImLR, "LeftCameraParameters.yaml", "Left");
-	task1(numImLR, "RightCameraParameters.yaml", "Right");
+	//task1(numImLR, "LeftCameraParameters.yaml", "Left");
+	//task1(numImLR, "RightCameraParameters.yaml", "Right");
 
 	cout << "Starting Task 2: Calibrating Stereo System" << endl;
-	task2("StereoL", "StereoR", numImStereo, "StereoCameraParameters.yaml", "LeftCameraParameters.yaml", "RightCameraParameters.yaml", dim);
+	//task2("StereoL", "StereoR", numImStereo, "StereoCameraParameters.yaml", "LeftCameraParameters.yaml", "RightCameraParameters.yaml", dim);
 
 	cout << "Starting Task 3: Drawing Epipolar Lines" << endl;
-	task3("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
+	//task3("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
 
 	cout << "Starting Task 4: Rectifying Images" << endl;
-	task4("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
+	//task4("LeftCameraParameters.yaml", "RightCameraParameters.yaml", "StereoCameraParameters.yaml");
 
 	//cout << "Starting Task 5" << endl;
 	//task5();
 
-	//cout << "Starting Task 6" << endl;
-	//task6();
 	//system("pause");
 	return 0;
 }
