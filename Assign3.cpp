@@ -319,15 +319,15 @@ void task5(String Lfilename, String Rfilename, String Rectfilename) {
 	cvtColor(ImRight, OutImR, CV_GRAY2RGB);
 	
 	vector<Point2f> LPoints, RPoints, LPointsOut, RPointsOut;
+	LPoints.push_back(Lcorners[4]);
 	LPoints.push_back(Lcorners[6]);
-	LPoints.push_back(Lcorners[12]);
-	LPoints.push_back(Lcorners[21]);
-	LPoints.push_back(Lcorners[40]);
+	LPoints.push_back(Lcorners[24]);
+	LPoints.push_back(Lcorners[26]);
 
+	RPoints.push_back(Rcorners[4]);
 	RPoints.push_back(Rcorners[6]);
-	RPoints.push_back(Rcorners[12]);
-	RPoints.push_back(Rcorners[21]);
-	RPoints.push_back(Rcorners[40]);
+	RPoints.push_back(Rcorners[24]);
+	RPoints.push_back(Rcorners[26]);
 
 	circle(OutImL, LPoints[0], 4, Scalar(255, 0, 0), 2);
 	circle(OutImL, LPoints[1], 4, Scalar(255, 0, 0), 2);
@@ -337,6 +337,9 @@ void task5(String Lfilename, String Rfilename, String Rectfilename) {
 	circle(OutImR, RPoints[1], 4, Scalar(255, 0, 0), 2);
 	circle(OutImR, RPoints[2], 4, Scalar(255, 0, 0), 2);
 	circle(OutImR, RPoints[3], 4, Scalar(255, 0, 0), 2);
+
+	imwrite("Task5Left.bmp", OutImL);
+	imwrite("Task5Right.bmp", OutImR);
 
 	undistortPoints(LPoints, LPointsOut, LCamMat, LDisCoef, R1, P1);
 	undistortPoints(RPoints, RPointsOut, RCamMat, RDisCoef, R2, P2);
@@ -355,9 +358,6 @@ void task5(String Lfilename, String Rfilename, String Rectfilename) {
 
 	fs << "LeftCoordinate" << LeftCoordinate;
 	fs << "RightCoordinate" << RightCoordinate;
-
-	cout << LeftCoordinate << endl << endl;
-	cout << RightCoordinate << endl << endl;
 }
 
 
@@ -369,21 +369,21 @@ int main() {
 
 	// --------------- PROCESS ALL IMAGES ---------------------------
 	cout << "Starting Task 1: Calibrating Left and Right Cameras" << endl;
-	task1(numImLR, "1- LeftCameraParameters.yaml", "Left");
-	task1(numImLR, "1- RightCameraParameters.yaml", "Right");
+	//task1(numImLR, "1- LeftCameraParameters.yaml", "Left");
+	//task1(numImLR, "1- RightCameraParameters.yaml", "Right");
 
 	cout << "Starting Task 2: Calibrating Stereo System" << endl;
-	task2("StereoL", "StereoR", numImStereo, "2- StereoCameraParameters.yaml", "1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", dim);
+	//task2("StereoL", "StereoR", numImStereo, "2- StereoCameraParameters.yaml", "1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", dim);
 
 	cout << "Starting Task 3: Drawing Epipolar Lines" << endl;
-	task3("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "2- StereoCameraParameters.yaml");
+	//task3("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "2- StereoCameraParameters.yaml");
 
 	cout << "Starting Task 4: Rectifying Images" << endl;
-	task4("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "2- StereoCameraParameters.yaml");
+	//task4("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "2- StereoCameraParameters.yaml");
 
 	cout << "Starting Task 5: Calculating 3D Information" << endl;
 	task5("1- LeftCameraParameters.yaml", "1- RightCameraParameters.yaml", "4- StereoRectification.yaml");
 
-	system("pause");
+	//system("pause");
 	return 0;
 }
