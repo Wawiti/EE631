@@ -1,4 +1,3 @@
-
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
@@ -36,12 +35,20 @@ int main() {
 	fs["Q"] >> Q;
 
 	// --------------- Read in and process images -------------------
+	Mat LOrig, LOrigCrop;		// Get an initial image to subtract from subsequent ones
+	char Path[50];
+	sprintf(Path, "Images\\Ball%01dL%02d.bmp", ImageSet, 0);
+	LOrig = imread(Path, CV_LOAD_IMAGE_GRAYSCALE);
+	Rect myROI(290, 10, 150, 265); // x, y, width, height
+	LOrig(myROI).copyTo(LOrigCrop);
+	
+
 	for (int i = 0; i < 32; i++) {
 		// Read in Left images one at a time
 		Mat LIm, LImCrop, LImThresh;
 		char Path[50];
-		sprintf(Path, "Images\\Set%01d\\Ball%01dL%02d.bmp", ImageSet, ImageSet, i);
-		LIm = imread(Path, CV_LOAD_IMAGE_COLOR);
+		sprintf(Path, "Images\\Ball%01dL%02d.bmp", ImageSet, i);
+		LIm = imread(Path, CV_LOAD_IMAGE_GRAYSCALE);
 		if (!LIm.data) {
 			cout << "couldn't load image " << i << endl;
 			cout << "Path: " << Path << endl;
@@ -50,10 +57,23 @@ int main() {
 		}
 
 		// Image Loaded, crop
-		Rect myROI(290, 10, 150, 270);
 		LIm(myROI).copyTo(LImCrop);
+		LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
+		
 		// Image Loaded, threshold image
-		threshold(LImCrop, LImThresh, 40, 255, 0);
+		threshold(LImThresh, LImThresh, 10, 255, THRESH_BINARY);
+		
+		//threshold(LImCrop, LImThresh, 40, 255, 0);
+		//threshold(LImCrop, LImThresh, 200, 255, CV_THRESH_OTSU); // Works okay - stupid shadow
+		//threshold(LImCrop, LImThresh, 200, 255, CV_THRESH_TRIANGLE);
+		//adaptiveThreshold(LImCrop, LImThresh, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, 15, -10);
+		//LImCrop.convertTo(LImCrop, CvType.CV_8UC1);
+		/*for (int x = 0; x < 3; x++) {
+			for (int y = 0; y < 2; y++) {
+				Mat block = LImCrop.rowRange(90 * x, 90 * (x + 1)).colRange(75 * y, 75 * (y + 1));
+				threshold(block, block, 40, 255, CV_THRESH_BINARY + CV_THRESH_OTSU);
+			}
+		}*/
 
 		namedWindow("Vogel", CV_WINDOW_AUTOSIZE);
 		while (1) {
