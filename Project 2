@@ -15,7 +15,7 @@ using namespace std;
 int main() {
 	// ------------- Initialize ALL VARIABLES -----------------------
 	Mat LCamMat, LDisCoef, RCamMat, RDisCoef, R, T, E, F, R1, R2, P1, P2, Q;
-	int ImageSet = 7;
+	int ImageSet = 3;
 
 	// --------------- Import data from file ------------------------
 	FileStorage fs("AllParameters.yml", FileStorage::READ);
@@ -36,48 +36,60 @@ int main() {
 
 	// --------------- Read in and process images -------------------
 	Mat LOrig, LOrigCrop;		// Get an initial image to subtract from subsequent ones
-	char Path[50];
-	sprintf(Path, "Images\\Ball%01dL%02d.bmp", ImageSet, 0);
-	LOrig = imread(Path, CV_LOAD_IMAGE_GRAYSCALE);
-	Rect myROI(290, 10, 150, 265); // x, y, width, height
-	LOrig(myROI).copyTo(LOrigCrop);
-	
+	Mat ROrig, ROrigCrop;
+
+	// Load Images
+	char LPathOrig[50];
+	char RPathOrig[50];
+	sprintf(LPathOrig, "Images\\Ball%01dL%02d.bmp", ImageSet, 0);
+	sprintf(RPathOrig, "Images\\Ball%01dR%02d.bmp", ImageSet, 0);
+	LOrig = imread(LPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
+	ROrig = imread(RPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
+
+	// Crop Original
+	Rect myROIL(290, 10, 150, 265); // x, y, width, height
+	Rect myROIR(200, 10, 150, 265); // x, y, width, height
+	LOrig(myROIL).copyTo(LOrigCrop);
+	ROrig(myROIR).copyTo(ROrigCrop);
 
 	for (int i = 0; i < 32; i++) {
 		// Read in Left images one at a time
 		Mat LIm, LImCrop, LImThresh;
-		char Path[50];
-		sprintf(Path, "Images\\Ball%01dL%02d.bmp", ImageSet, i);
-		LIm = imread(Path, CV_LOAD_IMAGE_GRAYSCALE);
-		if (!LIm.data) {
+		Mat RIm, RImCrop, RImThresh;
+		char LPath[50];
+		char RPath[50];
+		sprintf(LPath, "Images\\Ball%01dL%02d.bmp", ImageSet, i);
+		sprintf(RPath, "Images\\Ball%01dR%02d.bmp", ImageSet, i);
+		LIm = imread(LPath, CV_LOAD_IMAGE_GRAYSCALE);
+		RIm = imread(RPath, CV_LOAD_IMAGE_GRAYSCALE);
+		if (!LIm.data || !RIm.data) {
 			cout << "couldn't load image " << i << endl;
-			cout << "Path: " << Path << endl;
+			cout << "Left Path: " << LPath << endl;
+			cout << "Right Path: " << RPath << endl;
 			system("pause");
 			return -1;
 		}
 
 		// Image Loaded, crop
-		LIm(myROI).copyTo(LImCrop);
+		LIm(myROIL).copyTo(LImCrop);
+		RIm(myROIR).copyTo(RImCrop);
 		LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
+		RImThresh = RImCrop - ROrigCrop;	// Subtract very first image for background removal
 		
-		// Image Loaded, threshold image
-		threshold(LImThresh, LImThresh, 10, 255, THRESH_BINARY);
-		
-		//threshold(LImCrop, LImThresh, 40, 255, 0);
-		//threshold(LImCrop, LImThresh, 200, 255, CV_THRESH_OTSU); // Works okay - stupid shadow
-		//threshold(LImCrop, LImThresh, 200, 255, CV_THRESH_TRIANGLE);
-		//adaptiveThreshold(LImCrop, LImThresh, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, 15, -10);
-		//LImCrop.convertTo(LImCrop, CvType.CV_8UC1);
-		/*for (int x = 0; x < 3; x++) {
-			for (int y = 0; y < 2; y++) {
-				Mat block = LImCrop.rowRange(90 * x, 90 * (x + 1)).colRange(75 * y, 75 * (y + 1));
-				threshold(block, block, 40, 255, CV_THRESH_BINARY + CV_THRESH_OTSU);
-			}
-		}*/
+		// Blur image to reduce noise
+		GaussianBlur(LImThresh, LImThresh, Size(9, 9), 2, 2);
+		GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
 
-		namedWindow("Vogel", CV_WINDOW_AUTOSIZE);
+		// Image Loaded, threshold image
+		threshold(LImThresh, LImThresh, 5, 255, THRESH_BINARY);
+		threshold(RImThresh, RImThresh, 5, 255, THRESH_BINARY);
+
+		// Display Output
+		namedWindow("Left", CV_WINDOW_AUTOSIZE);
+		namedWindow("Right", CV_WINDOW_AUTOSIZE);
 		while (1) {
-			imshow("Vogel", LImThresh);
+			imshow("Left", LImThresh);
+			imshow("Right", RImThresh);
 			if (waitKey(30) == 27) {
 				//cout << "Program exited by user" << endl;
 				//return -2;
