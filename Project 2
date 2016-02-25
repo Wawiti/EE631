@@ -58,7 +58,7 @@ int main() {
 	//ROrig.copyTo(ROrigCrop);
 
 	for (int i = 0; i < 100; i++) {
-		// Read in Left images one at a time
+		// Read in images one at a time and proccess them
 		Mat LIm, LImCrop, LImThresh;
 		Mat RIm, RImCrop, RImThresh;
 		char LPath[50];
@@ -90,8 +90,33 @@ int main() {
 		GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
 
 		// Image Loaded, threshold image
-		threshold(LImThresh, LImThresh, 2, 255, THRESH_BINARY);
-		threshold(RImThresh, RImThresh, 2, 255, THRESH_BINARY);
+		threshold(LImThresh, LImThresh, 5, 255, THRESH_BINARY);
+		threshold(RImThresh, RImThresh, 5, 255, THRESH_BINARY);
+
+		//find the ball
+		Mat LPix, RPix;
+		findNonZero(LImThresh, LPix);
+  		findNonZero(RImThresh, RPix);
+
+		// Find group of pixels greater than 20 in both images?
+		if ((LPix.total() > 20) && (RPix.total() > 20)) {
+			cout << "Ball found in both images";
+			cout << LPix << endl;
+		}
+
+		// Find center of balls in both images
+		int xCent, yCent;
+		for (int k = 0; k < 1; k++) {
+			vector<int> xcenter;
+			vector<int> ycenter;
+			for (int p = 0; p < LPix.total(); p++) {
+				xcenter.push_back(LPix.at<Point2f>[0]);
+				ycenter.push_back(LPix.at<Point2f>[1]);
+			}
+			//cout << xcenter << endl;
+		}
+
+		// rectify point
 
 		// Display Output
 		cout << "Displaying Image " << i << endl;
@@ -108,12 +133,6 @@ int main() {
 				break;
 			}
 		}
-		
-		// Find group of pixels greater than 20?
-
-
-		// Calculate Center of group of pixels
-
 
 		// find z distance
 
