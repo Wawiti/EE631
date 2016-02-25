@@ -395,12 +395,37 @@ int main() {
 	fs["P2"] >> P2;
 	fs["Q"] >> Q;
 
-	// Read in first image, threshold
-	for (int i = 0; i < 32; i++) {
-		String filename = "\\Images\\Ball" + to_string(ImageSet);
+	// --------------- Read in and process images -------------------
+	for (int i = 20; i < 32; i++) {
+		// Read in images one at a time
+		Mat Im, ImCrop, ImThresh;
+		char Path[50];
+		sprintf(Path, "Images\\Ball%01dL%02d.bmp", ImageSet, i);
+		Im = imread(Path, CV_LOAD_IMAGE_COLOR);
+		if (!Im.data) {
+			cout << "couldn't load image " << i << endl;
+			cout << "Path: " << Path << endl;
+			system("pause");
+			return -1;
+		}
 
+		// Image Loaded, crop
+		Rect myROI(290, 50, 150, 200);
+		Im(myROI).copyTo(ImCrop);
+		// Image Loaded, threshold image
+		threshold(ImCrop, ImThresh, 40, 255, 0);
+		
+		namedWindow("Vogel", CV_WINDOW_AUTOSIZE);
+		while (1) {
+			imshow("Vogel", ImThresh);
+			if (waitKey(30) == 27) {
+				cout << "Program exited by user" << endl;
+				return 0;
+				break;
+			}
+		}
 	}
 
-	//system("pause");
+	system("pause");
 	return 0;
 }
