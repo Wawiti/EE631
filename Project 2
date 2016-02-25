@@ -7,7 +7,6 @@
 #include <sstream>
 #include <string>
 #include <fstream>
-#include <math.h>
 
 using namespace cv;
 using namespace std;
@@ -121,8 +120,8 @@ int main() {
 			RyCent = RyCent / RWhiteLocations.total();
 			cout << "Right Center: " << RxCent << ", " << RyCent << endl;
 
-			circle(LImThresh, Point((int)LxCent, (int)LyCent), 4, 0, -1);
-			circle(RImThresh, Point((int)RxCent, (int)RyCent), 4, 0, -1);
+			circle(LIm, Point((int)LxCent+290, (int)LyCent+10), 4, 0, -1);
+			circle(RIm, Point((int)RxCent+200, (int)RyCent+10), 4, 0, -1);
 		}
 		
 
@@ -135,8 +134,8 @@ int main() {
 		namedWindow("Left", CV_WINDOW_AUTOSIZE);
 		namedWindow("Right", CV_WINDOW_AUTOSIZE);
 		while (1) {
-			imshow("Left", LImThresh);
-			imshow("Right", RImThresh);
+			imshow("Left", LIm);
+			imshow("Right", RIm);
 			int keypress = waitKey(30);
 			if (keypress == 27) {			// If user presses esc key then quit program
 				cout << "Program exited by user" << endl;
