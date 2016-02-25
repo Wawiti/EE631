@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include <math.h>
 
 using namespace cv;
 using namespace std;
@@ -90,31 +91,42 @@ int main() {
 		GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
 
 		// Image Loaded, threshold image
-		threshold(LImThresh, LImThresh, 5, 255, THRESH_BINARY);
-		threshold(RImThresh, RImThresh, 5, 255, THRESH_BINARY);
+		threshold(LImThresh, LImThresh, 8, 255, THRESH_BINARY);
+		threshold(RImThresh, RImThresh, 8, 255, THRESH_BINARY);
 
 		//find the ball
-		Mat LPix, RPix;
-		findNonZero(LImThresh, LPix);
-  		findNonZero(RImThresh, RPix);
+		Mat LWhiteLocations, RWhiteLocations;
+		findNonZero(LImThresh, LWhiteLocations);
+  		findNonZero(RImThresh, RWhiteLocations);
 
 		// Find group of pixels greater than 20 in both images?
-		if ((LPix.total() > 20) && (RPix.total() > 20)) {
-			cout << "Ball found in both images";
-			cout << LPix << endl;
-		}
+		if ((LWhiteLocations.total() > 15) && (RWhiteLocations.total() > 15)) {
 
-		// Find center of balls in both images
-		int xCent, yCent;
-		for (int k = 0; k < 1; k++) {
-			vector<int> xcenter;
-			vector<int> ycenter;
-			for (int p = 0; p < LPix.total(); p++) {
-				xcenter.push_back(LPix.at<Point2f>[0]);
-				ycenter.push_back(LPix.at<Point2f>[1]);
+			// Find center of balls in both images
+			float LxCent = 0, LyCent = 0;
+			for (int i = 0; i < LWhiteLocations.total(); i++) {
+				LxCent = LxCent + LWhiteLocations.at<Point>(i).x;
+				LyCent = LyCent + LWhiteLocations.at<Point>(i).y;
 			}
-			//cout << xcenter << endl;
+			LxCent = LxCent / LWhiteLocations.total();
+			LyCent = LyCent / LWhiteLocations.total();
+			cout << "Left Center: " << LxCent << ", " << LyCent << endl;
+
+			float RxCent = 0, RyCent = 0;
+			for (int i = 0; i < RWhiteLocations.total(); i++) {
+				RxCent = RxCent + RWhiteLocations.at<Point>(i).x;
+				RyCent = RyCent + RWhiteLocations.at<Point>(i).y;
+			}
+			RxCent = RxCent / RWhiteLocations.total();
+			RyCent = RyCent / RWhiteLocations.total();
+			cout << "Right Center: " << RxCent << ", " << RyCent << endl;
+
+			circle(LImThresh, Point((int)LxCent, (int)LyCent), 4, 0, -1);
+			circle(RImThresh, Point((int)RxCent, (int)RyCent), 4, 0, -1);
 		}
+		
+
+
 
 		// rectify point
 
