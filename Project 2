@@ -41,8 +41,10 @@ int main() {
 	// Load Images
 	char LPathOrig[50];
 	char RPathOrig[50];
-	sprintf(LPathOrig, "Images\\Ball%01dL%02d.bmp", ImageSet, 0);
-	sprintf(RPathOrig, "Images\\Ball%01dR%02d.bmp", ImageSet, 0);
+	//sprintf(LPathOrig, "Images\\Ball%01dL%02d.bmp", ImageSet, 0);
+	sprintf(LPathOrig, "Images\\Set%01d\\Ball%01dL%02d.bmp", ImageSet, ImageSet, 0);
+	//sprintf(RPathOrig, "Images\\Ball%01dR%02d.bmp", ImageSet, 0);
+	sprintf(RPathOrig, "Images\\Set%01d\\Ball%01dR%02d.bmp", ImageSet, ImageSet, 0);
 	LOrig = imread(LPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 	ROrig = imread(RPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 
