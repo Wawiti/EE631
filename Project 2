@@ -15,7 +15,7 @@ using namespace std;
 int main() {
 	// ------------- Initialize ALL VARIABLES -----------------------
 	Mat LCamMat, LDisCoef, RCamMat, RDisCoef, R, T, E, F, R1, R2, P1, P2, Q;
-	int ImageSet = 3;
+	int ImageSet = 4;
 
 	// --------------- Import data from file ------------------------
 	FileStorage fs("AllParameters.yml", FileStorage::READ);
@@ -42,26 +42,31 @@ int main() {
 	char LPathOrig[50];
 	char RPathOrig[50];
 	//sprintf(LPathOrig, "Images\\Ball%01dL%02d.bmp", ImageSet, 0);
-	sprintf(LPathOrig, "Images\\Set%01d\\Ball%01dL%02d.bmp", ImageSet, ImageSet, 0);
 	//sprintf(RPathOrig, "Images\\Ball%01dR%02d.bmp", ImageSet, 0);
-	sprintf(RPathOrig, "Images\\Set%01d\\Ball%01dR%02d.bmp", ImageSet, ImageSet, 0);
+	sprintf(LPathOrig, "Images\\Set%01d\\Set%01dL%02d.bmp", ImageSet, ImageSet, 0);
+	sprintf(RPathOrig, "Images\\Set%01d\\Set%01dR%02d.bmp", ImageSet, ImageSet, 0);
+	cout << "Left Path: " << LPathOrig << " Right Path: " << RPathOrig << endl;
 	LOrig = imread(LPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 	ROrig = imread(RPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 
 	// Crop Original
-	Rect myROIL(290, 10, 150, 265); // x, y, width, height
-	Rect myROIR(200, 10, 150, 265); // x, y, width, height
+	Rect myROIL(290, 10, 150, 260); // x, y, width, height
+	Rect myROIR(200, 10, 150, 260); // x, y, width, height
 	LOrig(myROIL).copyTo(LOrigCrop);
 	ROrig(myROIR).copyTo(ROrigCrop);
+	//LOrig.copyTo(LOrigCrop);
+	//ROrig.copyTo(ROrigCrop);
 
-	for (int i = 0; i < 32; i++) {
+	for (int i = 0; i < 100; i++) {
 		// Read in Left images one at a time
 		Mat LIm, LImCrop, LImThresh;
 		Mat RIm, RImCrop, RImThresh;
 		char LPath[50];
 		char RPath[50];
-		sprintf(LPath, "Images\\Ball%01dL%02d.bmp", ImageSet, i);
-		sprintf(RPath, "Images\\Ball%01dR%02d.bmp", ImageSet, i);
+		//sprintf(LPath, "Images\\Ball%01dL%02d.bmp", ImageSet, i);
+		//sprintf(RPath, "Images\\Ball%01dR%02d.bmp", ImageSet, i);
+		sprintf(LPath, "Images\\Set%01d\\Set%01dL%02d.bmp", ImageSet, ImageSet, i);
+		sprintf(RPath, "Images\\Set%01d\\Set%01dR%02d.bmp", ImageSet, ImageSet, i);
 		LIm = imread(LPath, CV_LOAD_IMAGE_GRAYSCALE);
 		RIm = imread(RPath, CV_LOAD_IMAGE_GRAYSCALE);
 		if (!LIm.data || !RIm.data) {
@@ -75,6 +80,8 @@ int main() {
 		// Image Loaded, crop
 		LIm(myROIL).copyTo(LImCrop);
 		RIm(myROIR).copyTo(RImCrop);
+		//LIm.copyTo(LImCrop);
+		//RIm.copyTo(RImCrop);
 		LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
 		RImThresh = RImCrop - ROrigCrop;	// Subtract very first image for background removal
 		
@@ -83,23 +90,37 @@ int main() {
 		GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
 
 		// Image Loaded, threshold image
-		threshold(LImThresh, LImThresh, 5, 255, THRESH_BINARY);
-		threshold(RImThresh, RImThresh, 5, 255, THRESH_BINARY);
+		threshold(LImThresh, LImThresh, 2, 255, THRESH_BINARY);
+		threshold(RImThresh, RImThresh, 2, 255, THRESH_BINARY);
 
 		// Display Output
+		cout << "Displaying Image " << i << endl;
 		namedWindow("Left", CV_WINDOW_AUTOSIZE);
 		namedWindow("Right", CV_WINDOW_AUTOSIZE);
 		while (1) {
 			imshow("Left", LImThresh);
 			imshow("Right", RImThresh);
-			if (waitKey(30) == 27) {
-				//cout << "Program exited by user" << endl;
-				//return -2;
+			int keypress = waitKey(30);
+			if (keypress == 27) {			// If user presses esc key then quit program
+				cout << "Program exited by user" << endl;
+				return -1;
+			}else if (keypress == 32) {		// If user presses space bar than advance to next image
 				break;
 			}
 		}
-	}
+		
+		// Find group of pixels greater than 20?
 
-	system("pause");
+
+		// Calculate Center of group of pixels
+
+
+		// find z distance
+
+
+		// find x and y positions
+		
+
+	}
 	return 0;
 }
