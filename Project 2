@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include <math.h>
 
 using namespace cv;
 using namespace std;
@@ -14,26 +15,21 @@ using namespace std;
 //======================== Main Loop ===========================
 int main() {
 	// ------------- Initialize ALL VARIABLES -----------------------
-	Mat LCamMat, LDisCoef, RCamMat, RDisCoef, R, T, E, F, R1, R2, P1, P2, Q;
+	Mat LCamMat, LDisCoef, RCamMat, RDisCoef, R1, R2, P1, P2, Q;
 	int ImageSet = 4;
 
 	// --------------- Import data from file ------------------------
 	FileStorage fs("AllParameters.yml", FileStorage::READ);
-
 	fs["LcameraMatrix"] >> LCamMat;
 	fs["LdistCoeffs"] >> LDisCoef;
 	fs["RcameraMatrix"] >> RCamMat;
 	fs["RdistCoeffs"] >> RDisCoef;
-	fs["R"] >> R;
-	fs["T"] >> T;
-	fs["E"] >> E;
-	fs["F"] >> F;
 	fs["R1"] >> R1;
 	fs["R2"] >> R2;
 	fs["P1"] >> P1;
 	fs["P2"] >> P2;
 	fs["Q"] >> Q;
-
+	fs.release();
 	// --------------- Read in and process images -------------------
 	Mat LOrig, LOrigCrop;		// Get an initial image to subtract from subsequent ones
 	Mat ROrig, ROrigCrop;
@@ -41,8 +37,6 @@ int main() {
 	// Load Images
 	char LPathOrig[50];
 	char RPathOrig[50];
-	//sprintf(LPathOrig, "Images\\Ball%01dL%02d.bmp", ImageSet, 0);
-	//sprintf(RPathOrig, "Images\\Ball%01dR%02d.bmp", ImageSet, 0);
 	sprintf(LPathOrig, "Images\\Set%01d\\Set%01dL%02d.bmp", ImageSet, ImageSet, 0);
 	sprintf(RPathOrig, "Images\\Set%01d\\Set%01dR%02d.bmp", ImageSet, ImageSet, 0);
 	cout << "Left Path: " << LPathOrig << " Right Path: " << RPathOrig << endl;
@@ -54,17 +48,13 @@ int main() {
 	Rect myROIR(200, 10, 150, 260); // x, y, width, height
 	LOrig(myROIL).copyTo(LOrigCrop);
 	ROrig(myROIR).copyTo(ROrigCrop);
-	//LOrig.copyTo(LOrigCrop);
-	//ROrig.copyTo(ROrigCrop);
 
-	for (int i = 0; i < 100; i++) {
-		// Read in images one at a time and proccess them
+	// Read in images one pair at a time and proccess them
+	for (int i = 26; i < 100; i++) { //change val. of i here to start at a certain image
 		Mat LIm, LImCrop, LImThresh;
 		Mat RIm, RImCrop, RImThresh;
 		char LPath[50];
 		char RPath[50];
-		//sprintf(LPath, "Images\\Ball%01dL%02d.bmp", ImageSet, i);
-		//sprintf(RPath, "Images\\Ball%01dR%02d.bmp", ImageSet, i);
 		sprintf(LPath, "Images\\Set%01d\\Set%01dL%02d.bmp", ImageSet, ImageSet, i);
 		sprintf(RPath, "Images\\Set%01d\\Set%01dR%02d.bmp", ImageSet, ImageSet, i);
 		LIm = imread(LPath, CV_LOAD_IMAGE_GRAYSCALE);
@@ -80,11 +70,9 @@ int main() {
 		// Image Loaded, crop
 		LIm(myROIL).copyTo(LImCrop);
 		RIm(myROIR).copyTo(RImCrop);
-		//LIm.copyTo(LImCrop);
-		//RIm.copyTo(RImCrop);
 		LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
 		RImThresh = RImCrop - ROrigCrop;	// Subtract very first image for background removal
-		
+
 		// Blur image to reduce noise
 		GaussianBlur(LImThresh, LImThresh, Size(9, 9), 2, 2);
 		GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
@@ -92,16 +80,17 @@ int main() {
 		// Image Loaded, threshold image
 		threshold(LImThresh, LImThresh, 8, 255, THRESH_BINARY);
 		threshold(RImThresh, RImThresh, 8, 255, THRESH_BINARY);
-
-		//find the ball
+		
+		// ================= Find center of ball in both images and rectify the point ================
+		// Find the White pixels
 		Mat LWhiteLocations, RWhiteLocations;
 		findNonZero(LImThresh, LWhiteLocations);
-  		findNonZero(RImThresh, RWhiteLocations);
+		findNonZero(RImThresh, RWhiteLocations);
 
-		// Find group of pixels greater than 20 in both images?
+		// Find group of pixels greater than # in both images?
 		if ((LWhiteLocations.total() > 15) && (RWhiteLocations.total() > 15)) {
 
-			// Find center of balls in both images
+			// Find center of ball in Left images
 			float LxCent = 0, LyCent = 0;
 			for (int i = 0; i < LWhiteLocations.total(); i++) {
 				LxCent = LxCent + LWhiteLocations.at<Point>(i).x;
@@ -109,7 +98,7 @@ int main() {
 			}
 			LxCent = LxCent / LWhiteLocations.total();
 			LyCent = LyCent / LWhiteLocations.total();
-			cout << "Left Center: " << LxCent << ", " << LyCent << endl;
+			cout << "Left Center Cropped (pixles) = [" << LxCent << ", " << LyCent << "]" << endl;
 
 			float RxCent = 0, RyCent = 0;
 			for (int i = 0; i < RWhiteLocations.total(); i++) {
@@ -118,16 +107,49 @@ int main() {
 			}
 			RxCent = RxCent / RWhiteLocations.total();
 			RyCent = RyCent / RWhiteLocations.total();
-			cout << "Right Center: " << RxCent << ", " << RyCent << endl;
+			cout << "Right Center Cropped (pixles) = [" << RxCent << ", " << RyCent << "]" << endl;
 
-			circle(LIm, Point((int)LxCent+290, (int)LyCent+10), 4, 0, -1);
-			circle(RIm, Point((int)RxCent+200, (int)RyCent+10), 4, 0, -1);
+			// Draw the center points on the original image to check the point
+			circle(LIm, Point(LxCent + myROIL.x, LyCent + myROIL.y), 4, 0, -1);
+			circle(RIm, Point(RxCent + myROIR.x, RyCent + myROIR.y), 4, 0, -1);
+
+			// Undistort the points
+			vector<Point2f> LCent, RCent;
+			vector<Point2f> LCentUndist, RCentUndist;
+			LCent.push_back(Point2f(LxCent + myROIL.x, LyCent + myROIL.y));
+			RCent.push_back(Point2f(RxCent + myROIR.x, RyCent + myROIR.y));
+			
+			cout << "Left Center Original (pixles) = " << LCent << endl;
+			cout << "Right Center Original (pixles) = " << RCent << endl;
+
+			/*undistortPoints(LCent, LCentUndist, LCamMat, LDisCoef, R1, P1); // !!!!!!!!!!! BREAKS HERE !!!!!!!!!!!!!
+			undistortPoints(RCent, RCentUndist, RCamMat, RDisCoef, R2, P2);
+
+			cout << "LCentUndist (pixles) =" << LCentUndist << endl;
+			cout << "RCentUndist (pixles) =" << RCentUndist << endl;
+
+			// Create vectors of point3f(x, y, disparity)
+			vector<Point3f> Lvec, Rvec;
+			for (int i = 0; i < 4; i++)
+			{
+			Lvec.push_back(Point3f(LCentUndist[i].x, LCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
+			Rvec.push_back(Point3f(RCentUndist[i].x, RCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
+			}
+
+			// Calcuate 3D info
+			vector<Point3f> L3D, R3D;
+			perspectiveTransform(Lvec, L3D, Q);
+			perspectiveTransform(Rvec, R3D, Q);
+
+			//print out the resulting 3D coordinates of the 
+			cout << "L3D (inches) =" << L3D << endl;
+			cout << "R3D (inches) =" << R3D << endl;*/
 		}
-		
 
-
-
-		// rectify point
+		/*if ("good # of points") {
+			//fit parabola to find y
+			//find approx. x position by averaging the x positions base off of the left camera points
+		}*/
 
 		// Display Output
 		cout << "Displaying Image " << i << endl;
@@ -140,17 +162,12 @@ int main() {
 			if (keypress == 27) {			// If user presses esc key then quit program
 				cout << "Program exited by user" << endl;
 				return -1;
-			}else if (keypress == 32) {		// If user presses space bar than advance to next image
+			}
+			else if (keypress == 32) {		// If user presses space bar than advance to next image
 				break;
 			}
 		}
-
-		// find z distance
-
-
-		// find x and y positions
-		
-
+		// =============================================================================
 	}
 	return 0;
 }
