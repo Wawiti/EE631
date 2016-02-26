@@ -35,8 +35,39 @@ double approximateX(vector<Point3f> &Vec3DPt) {
 }
 
 //======================== Y approximation =====================
-double approximateY(vector<Point3f> &Vec3DPt) {
-	return 0;
+double approximateY(vector<Point3f> &Vec3DPt/*, double* coefficients*/) {
+	int nPoints = Vec3DPt.size();
+	Mat z, y;
+	for (int r = 0; r < nPoints; r++) {
+		z.push_back(Vec3DPt[r].z);
+		y.push_back(Vec3DPt[r].y);
+	}
+
+	double yInt;
+	int order = 2;
+	Mat Z;
+	Z = Mat::zeros(z.rows, order + 1, CV_32FC1);
+	Mat copy;
+	for (int r = 0; r <= order; r++)
+	{
+		copy = z.clone();
+		pow(copy, r, copy);
+		Mat M1 = Z.col(r);
+		copy.col(0).copyTo(M1);
+	}
+	Mat Z_t, Z_inv;
+	transpose(Z, Z_t);
+	Mat temp = Z_t*Z;
+	Mat temp2;
+	invert(temp, temp2);
+	Mat temp3 = temp2*Z_t;
+	Mat W = temp3*y;
+
+	//get final y
+	cout << " W =" << endl << W << endl;
+
+	return W.at<float>(0,0);
+	
 }
 
 //======================== Main Loop ===========================
@@ -81,7 +112,7 @@ int main() {
 	ROrig(myROIR).copyTo(ROrigCrop);
 
 	// Read in images one pair at a time and proccess them
-	for (int i = 26; i < 100; i++) { //change val. of i here to start at a certain image
+	for (int i = 26; i < 50; i++) {		//change val. of i here to start at a certain image
 		Mat LIm, LImCrop, LImThresh;
 		Mat RIm, RImCrop, RImThresh;
 		char LPath[50];
@@ -104,7 +135,7 @@ int main() {
 		LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
 		RImThresh = RImCrop - ROrigCrop;	// Subtract very first image for background removal
 
-											// Blur image to reduce noise
+		// Blur image to reduce noise
 		GaussianBlur(LImThresh, LImThresh, Size(9, 9), 2, 2);
 		GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
 
@@ -123,7 +154,7 @@ int main() {
 
 			count++;
 
-			// Find center of ball in Left images
+			// Find center of ball in images
 			float LxCent = 0, LyCent = 0;
 			for (int r = 0; r < LWhiteLocations.total(); r++) {
 				LxCent = LxCent + LWhiteLocations.at<Point>(r).x;
@@ -177,15 +208,21 @@ int main() {
 
 			if (count == 4) {
 				double xPos = approximateX(LPoints);
+				cout << "Initial Estimated X Position" << xPos << endl;
+				// xPos -= 10.2154;
 				// move(x, 0)
 			}else if(count == 12) {
 				double xPos = approximateX(LPoints);
 				double yPos = approximateY(LPoints);
-				// move(x,y)
+				cout << "Final Estimated X Position" << xPos << endl;
+				cout << "Final Estimated Y Position" << yPos << endl;
+				// xPos -= 10.2154;
+				// yPos -= 17.49;
+				// move(x, y)
 			}
 
 			//print out the resulting 3D coordinates of the
-			ofs << i << ", " << L3D[0].x << ", " << L3D[0].y << ", " << L3D[0].z << ", " << R3D[0].x << ", " << R3D[0].y << ", " << R3D[0].z << endl;
+			//ofs << i << ", " << L3D[0].x << ", " << L3D[0].y << ", " << L3D[0].z << ", " << R3D[0].x << ", " << R3D[0].y << ", " << R3D[0].z << endl;
 		}
 
 		// Display Output
