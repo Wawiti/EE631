@@ -122,7 +122,7 @@ int main() {
 			cout << "Left Center Original (pixles) = " << LCent << endl;
 			cout << "Right Center Original (pixles) = " << RCent << endl;
 
-			undistortPoints(LCent, LCentUndist, LCamMat, LDisCoef, R1, P1); // !!!!!!!!!!! BREAKS HERE !!!!!!!!!!!!!
+			undistortPoints(LCent, LCentUndist, LCamMat, LDisCoef, R1, P1);
 			undistortPoints(RCent, RCentUndist, RCamMat, RDisCoef, R2, P2);
 
 			cout << "LCentUndist (pixles) =" << LCentUndist << endl;
