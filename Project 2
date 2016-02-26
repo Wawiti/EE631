@@ -4,19 +4,50 @@
 #include "opencv2/calib3d.hpp"
 #include <stdio.h>
 #include <iostream>
-#include <sstream>
-#include <string>
 #include <fstream>
-#include <math.h>
+#include <string>
 
 using namespace cv;
 using namespace std;
+
+//======================== X approximation =====================
+double approximateX(vector<Point3f> &Vec3DPt) {
+	if (Vec3DPt.size() < 2) {
+		cout << "Infinite number of lines... ERROR" << endl;
+	}
+	
+	double sumX = 0, sumZ = 0, sumXZ = 0, sumZZ = 0;
+	int nPoint = Vec3DPt.size();
+	for (int r = 0; r < nPoint; r++) {
+		sumX += Vec3DPt[r].x;
+		sumZ += Vec3DPt[r].z;
+		sumXZ += Vec3DPt[r].x * Vec3DPt[r].z;
+		sumZZ += Vec3DPt[r].z * Vec3DPt[r].z;
+	}
+
+	double xMean = sumX / nPoint;
+	double zMean = sumZ / nPoint;
+	double denominator = sumZZ - sumZ * zMean;
+	double slope = (sumXZ - sumZ * xMean) / denominator;
+	double xInt = xMean - slope * zMean;
+
+	return xInt;
+}
+
+//======================== Y approximation =====================
+double approximateY(vector<Point3f> &Vec3DPt) {
+	return 0;
+}
 
 //======================== Main Loop ===========================
 int main() {
 	// ------------- Initialize ALL VARIABLES -----------------------
 	Mat LCamMat, LDisCoef, RCamMat, RDisCoef, R1, R2, P1, P2, Q;
 	int ImageSet = 4;
+	int count = 0;	// Number of frames with ball in both.
+	vector<Point3f> LPoints, RPoints;
+	ofstream ofs;
+	ofs.open("Points.txt", ofstream::out);
 
 	// --------------- Import data from file ------------------------
 	FileStorage fs("AllParameters.yml", FileStorage::READ);
@@ -90,20 +121,22 @@ int main() {
 		// Find group of pixels greater than # in both images?
 		if ((LWhiteLocations.total() > 15) && (RWhiteLocations.total() > 15)) {
 
+			count++;
+
 			// Find center of ball in Left images
 			float LxCent = 0, LyCent = 0;
-			for (int i = 0; i < LWhiteLocations.total(); i++) {
-				LxCent = LxCent + LWhiteLocations.at<Point>(i).x;
-				LyCent = LyCent + LWhiteLocations.at<Point>(i).y;
+			for (int r = 0; r < LWhiteLocations.total(); r++) {
+				LxCent = LxCent + LWhiteLocations.at<Point>(r).x;
+				LyCent = LyCent + LWhiteLocations.at<Point>(r).y;
 			}
 			LxCent = LxCent / LWhiteLocations.total();
 			LyCent = LyCent / LWhiteLocations.total();
 			cout << "Left Center Cropped (pixles) = [" << LxCent << ", " << LyCent << "]" << endl;
 
 			float RxCent = 0, RyCent = 0;
-			for (int i = 0; i < RWhiteLocations.total(); i++) {
-				RxCent = RxCent + RWhiteLocations.at<Point>(i).x;
-				RyCent = RyCent + RWhiteLocations.at<Point>(i).y;
+			for (int r = 0; r < RWhiteLocations.total(); r++) {
+				RxCent = RxCent + RWhiteLocations.at<Point>(r).x;
+				RyCent = RyCent + RWhiteLocations.at<Point>(r).y;
 			}
 			RxCent = RxCent / RWhiteLocations.total();
 			RyCent = RyCent / RWhiteLocations.total();
@@ -130,25 +163,30 @@ int main() {
 
 			// Create vectors of point3f(x, y, disparity)
 			vector<Point3f> Lvec, Rvec;
-			for (int i = 0; i < 1; i++){
-				Lvec.push_back(Point3f(LCentUndist[i].x, LCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
-				Rvec.push_back(Point3f(RCentUndist[i].x, RCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
+			for (int r = 0; r < 1; r++){
+				Lvec.push_back(Point3f(LCentUndist[r].x, LCentUndist[r].y, LCentUndist[r].x - RCentUndist[r].x));
+				Rvec.push_back(Point3f(RCentUndist[r].x, RCentUndist[r].y, LCentUndist[r].x - RCentUndist[r].x));
 			}
 
 			// Calcuate 3D info
 			vector<Point3f> L3D, R3D;
 			perspectiveTransform(Lvec, L3D, Q);
 			perspectiveTransform(Rvec, R3D, Q);
+			LPoints.push_back(L3D[0]);
+			RPoints.push_back(R3D[0]);
+
+			if (count == 4) {
+				double xPos = approximateX(LPoints);
+				// move(x, 0)
+			}else if(count == 12) {
+				double xPos = approximateX(LPoints);
+				double yPos = approximateY(LPoints);
+				// move(x,y)
+			}
 
 			//print out the resulting 3D coordinates of the
-			cout << "L3D (inches) =" << L3D << endl;
-			cout << "R3D (inches) =" << R3D << endl;
+			ofs << i << ", " << L3D[0].x << ", " << L3D[0].y << ", " << L3D[0].z << ", " << R3D[0].x << ", " << R3D[0].y << ", " << R3D[0].z << endl;
 		}
-
-		/*if ("good # of points") {
-		//fit parabola to find y
-		//find approx. x position by averaging the x positions base off of the left camera points
-		}*/
 
 		// Display Output
 		cout << "Displaying Image " << i << endl;
@@ -168,5 +206,8 @@ int main() {
 		}
 		// =============================================================================
 	}
+	cout << LPoints << endl << endl;
+	cout << RPoints << endl << endl;
+	system("pause");
 	return 0;
 }
