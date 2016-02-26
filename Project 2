@@ -100,6 +100,7 @@ int main() {
 			LyCent = LyCent / LWhiteLocations.total();
 			cout << "Left Center Cropped (pixles) = [" << LxCent << ", " << LyCent << "]" << endl;
 
+			// Find center of ball in Right images
 			float RxCent = 0, RyCent = 0;
 			for (int i = 0; i < RWhiteLocations.total(); i++) {
 				RxCent = RxCent + RWhiteLocations.at<Point>(i).x;
@@ -110,14 +111,17 @@ int main() {
 			cout << "Right Center Cropped (pixles) = [" << RxCent << ", " << RyCent << "]" << endl;
 
 			// Draw the center points on the original image to check the point
-			circle(LIm, Point(LxCent + myROIL.x, LyCent + myROIL.y), 4, 0, -1);
-			circle(RIm, Point(RxCent + myROIR.x, RyCent + myROIR.y), 4, 0, -1);
+			Point2f LCentPt, RCentPt;
+			LCentPt = Point2f(LxCent + myROIL.x, LyCent + myROIL.y);
+			RCentPt = Point2f(RxCent + myROIR.x, RyCent + myROIR.y);
+			circle(LIm, LCentPt, 4, 0, -1);
+			circle(RIm, RCentPt, 4, 0, -1);
 
 			// Undistort the points
 			vector<Point2f> LCent, RCent;
 			vector<Point2f> LCentUndist, RCentUndist;
-			LCent.push_back(Point2f(LxCent + myROIL.x, LyCent + myROIL.y));
-			RCent.push_back(Point2f(RxCent + myROIR.x, RyCent + myROIR.y));
+			LCent.push_back(LCentPt);
+			RCent.push_back(RCentPt);
 			
 			cout << "Left Center Original (pixles) = " << LCent << endl;
 			cout << "Right Center Original (pixles) = " << RCent << endl;
