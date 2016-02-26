@@ -73,14 +73,14 @@ int main() {
 		LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
 		RImThresh = RImCrop - ROrigCrop;	// Subtract very first image for background removal
 
-		// Blur image to reduce noise
+											// Blur image to reduce noise
 		GaussianBlur(LImThresh, LImThresh, Size(9, 9), 2, 2);
 		GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
 
 		// Image Loaded, threshold image
 		threshold(LImThresh, LImThresh, 8, 255, THRESH_BINARY);
 		threshold(RImThresh, RImThresh, 8, 255, THRESH_BINARY);
-		
+
 		// ================= Find center of ball in both images and rectify the point ================
 		// Find the White pixels
 		Mat LWhiteLocations, RWhiteLocations;
@@ -118,11 +118,11 @@ int main() {
 			vector<Point2f> LCentUndist, RCentUndist;
 			LCent.push_back(Point2f(LxCent + myROIL.x, LyCent + myROIL.y));
 			RCent.push_back(Point2f(RxCent + myROIR.x, RyCent + myROIR.y));
-			
+
 			cout << "Left Center Original (pixles) = " << LCent << endl;
 			cout << "Right Center Original (pixles) = " << RCent << endl;
 
-			/*undistortPoints(LCent, LCentUndist, LCamMat, LDisCoef, R1, P1); // !!!!!!!!!!! BREAKS HERE !!!!!!!!!!!!!
+			undistortPoints(LCent, LCentUndist, LCamMat, LDisCoef, R1, P1); // !!!!!!!!!!! BREAKS HERE !!!!!!!!!!!!!
 			undistortPoints(RCent, RCentUndist, RCamMat, RDisCoef, R2, P2);
 
 			cout << "LCentUndist (pixles) =" << LCentUndist << endl;
@@ -130,10 +130,9 @@ int main() {
 
 			// Create vectors of point3f(x, y, disparity)
 			vector<Point3f> Lvec, Rvec;
-			for (int i = 0; i < 4; i++)
-			{
-			Lvec.push_back(Point3f(LCentUndist[i].x, LCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
-			Rvec.push_back(Point3f(RCentUndist[i].x, RCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
+			for (int i = 0; i < 1; i++){
+				Lvec.push_back(Point3f(LCentUndist[i].x, LCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
+				Rvec.push_back(Point3f(RCentUndist[i].x, RCentUndist[i].y, LCentUndist[i].x - RCentUndist[i].x));
 			}
 
 			// Calcuate 3D info
@@ -141,14 +140,14 @@ int main() {
 			perspectiveTransform(Lvec, L3D, Q);
 			perspectiveTransform(Rvec, R3D, Q);
 
-			//print out the resulting 3D coordinates of the 
+			//print out the resulting 3D coordinates of the
 			cout << "L3D (inches) =" << L3D << endl;
-			cout << "R3D (inches) =" << R3D << endl;*/
+			cout << "R3D (inches) =" << R3D << endl;
 		}
 
 		/*if ("good # of points") {
-			//fit parabola to find y
-			//find approx. x position by averaging the x positions base off of the left camera points
+		//fit parabola to find y
+		//find approx. x position by averaging the x positions base off of the left camera points
 		}*/
 
 		// Display Output
