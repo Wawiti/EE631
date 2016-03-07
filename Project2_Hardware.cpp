@@ -175,7 +175,7 @@ long QSProcessThreadFunc(CTCSys *QS)
 	fs.release();
 
 	ofstream ofs;
-	ofs.open("Debug.txt", ofstream::out);
+	ofs.open("Test5.txt", ofstream::out);
 
 	Mat LOrig, LOrigCrop;				// Get an initial image for background removal
 	Mat ROrig, ROrigCrop;	
@@ -189,14 +189,14 @@ long QSProcessThreadFunc(CTCSys *QS)
 
 	//Rect myROIL(300, 10, 150, 250);		// x, y, width, height
 	//Rect myROIR(210, 10, 150, 250);		// x, y, width, height
-	Rect myROIL(290, 10, 140, 250);		// x, y, width, height This one works better
+	Rect myROIL(300, 10, 140, 250);		// x, y, width, height THIS ONE WORKS BETTER
 	Rect myROIR(210, 10, 140, 250);		// x, y, width, height
 	
 	int count = 0;						// Number of frames with ball in both
 	int resetcount = 0;					// number of frames to reset
 
-	float xOffset = 10.2154;			// THESE MAY NEED TO BE CHANGED TO FIT ACTUAL REAL LIFE !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	float yOffset = 21;
+	float xOffset = 13;			// THESE MAY NEED TO BE CHANGED TO FIT ACTUAL REAL LIFE !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	float yOffset = 9;
 
 	char    str[32];
     long	FrameStamp;
@@ -204,10 +204,9 @@ long QSProcessThreadFunc(CTCSys *QS)
     FrameStamp = 0;
 
 
-#ifdef PTGREY
-#else					// If the cameras aren't attached
+#ifndef PTGREY			// If the cameras aren't attached			
 	int imCnt = 1;		// count to choose next image
-	int ImageSet = 5;	// Set of images to read in from
+	int ImageSet = 7;	// Set of images to read in from
 #endif
 
 	while (QS->EventEndProcess == FALSE) {
@@ -250,31 +249,36 @@ long QSProcessThreadFunc(CTCSys *QS)
 			
 #ifdef PTGREY		// Grab images from the camera if the camera is attached
 			for (i = 0; i < QS->IR.NumCameras; i++) {
-				QS->IR.ProcBuf[i].copyTo(Im[i]);
-				QS->IR.OutBuf1[i] = QS->IR.ProcBuf[i];
+				QS->IR.ProcBuf[i].copyTo(Im[i]);		// Get a copy of the image for processing
+				//QS->IR.OutBuf1[i] = QS->IR.ProcBuf[i];	// copy image to output (allow to see final image)
 			}
 #else				// Import images from file if the camera is not attached
 				char LPathOrig[50];
 				char RPathOrig[50];
-				snprintf(LPathOrig, 1024, "Images\\Set%01d\\Set%01dL%02d.bmp", ImageSet, ImageSet, imCnt);
-				snprintf(RPathOrig, 1024, "Images\\Set%01d\\Set%01dR%02d.bmp", ImageSet, ImageSet, imCnt);
-				//String LPathOrig = "Images\\Set" + ImageSet + "\\Set" + ImageSet + "L" + imCnt + ".bmp";
+				//snprintf(LPathOrig, 1024, "Images\\Set%01d\\Set%01dL%02d.bmp", ImageSet, ImageSet, imCnt);
+				//snprintf(RPathOrig, 1024, "Images\\Set%01d\\Set%01dR%02d.bmp", ImageSet, ImageSet, imCnt);
+				sprintf_s(LPathOrig, "Images\\Set%01d\\Set%01dL%02d.bmp", ImageSet, ImageSet, imCnt);
+				sprintf_s(RPathOrig, "Images\\Set%01d\\Set%01dR%02d.bmp", ImageSet, ImageSet, imCnt);
 				Im[0] = imread(LPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 				Im[1] = imread(RPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 				imCnt++;
-				if (imCnt >= 100) {
-					system("pause");
+				if (imCnt >= 50) {
+					system("pause");	// Stop after 100 frames
 				}
-
 #endif
 				///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 				// Done grabbing images from camera
 
 			if (!calibrated) {
-				Im[0](myROIL).copyTo(LOrigCrop);
-				Im[1](myROIR).copyTo(ROrigCrop);
-				calibrated = true;
+				count++;
+				if (count >= 5) {	// Don't grab the first frame, wait a bit for things to stabilize
+					Im[0](myROIL).copyTo(LOrigCrop);
+					Im[1](myROIR).copyTo(ROrigCrop);
+					calibrated = true;
+					count = 0;
+				}
 			}
+
 			else {
 				Mat LImCrop, LImThresh;
 				Mat RImCrop, RImThresh;
@@ -285,7 +289,7 @@ long QSProcessThreadFunc(CTCSys *QS)
 
 				// Remove background from image
 				LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
-				RImThresh = RImCrop - ROrigCrop;	// Subtract very first image for background removal
+				RImThresh = RImCrop - ROrigCrop;
 
 				// Blur image to reduce noise
 				GaussianBlur(LImThresh, LImThresh, Size(9, 9), 2, 2);
@@ -302,15 +306,29 @@ long QSProcessThreadFunc(CTCSys *QS)
 
 				if (PositionReseting) {
 					resetcount++;
-					if (resetcount >= 50) {
+					if (resetcount >= 150) {
 						double xPos = 0;
 						double yPos = 0;
 						Bounding(xPos, yPos);
+#ifdef USE_STAGE
 						QS->Move_X = xPos;
 						QS->Move_Y = yPos;
 						SetEvent(QS->QSMoveEvent);		// Signal the move event to move catcher. The event will be reset in the move thread.
+#endif
 						resetcount = 0;
+						count = 0;
 						PositionReseting = false;
+						foundfirst = false;
+						calibrated = false;
+
+						// Clear center points
+						vector<Point2f> empt1, empt2;		// Stores points for right and left undistortion
+						LCent.swap(empt1);
+						RCent.swap(empt2);
+#ifndef PTGREY
+						// Reinitialize image counter
+						imCnt = 0;
+#endif
 					}
 				}
 
@@ -340,6 +358,7 @@ long QSProcessThreadFunc(CTCSys *QS)
 					LCent.push_back(Point2f(LxCent + myROIL.x, LyCent + myROIL.y));
 					RCent.push_back(Point2f(RxCent + myROIR.x, RyCent + myROIR.y));
 
+					// DEBUG
 					//ofs << "LCamMat = " << endl << LCamMat << endl << endl;
 					//ofs << "RCamMat = " << endl << RCamMat << endl << endl;
 					//ofs << "LDisCoef = " << endl << LDisCoef << endl << endl;
@@ -356,7 +375,9 @@ long QSProcessThreadFunc(CTCSys *QS)
 					//imwrite("Left.jpg", LImThresh);
 					//imwrite("Right.jpg", RImThresh);
 
+					// If we've reached a point to calculate 3D info
 					if (count == 4 || count == 12){
+						// Rectify and undistort points
 						vector<Point2f> LCentUndist, RCentUndist;
 						undistortPoints(LCent, LCentUndist, LCamMat, LDisCoef, R1, P1);
 						undistortPoints(RCent, RCentUndist, RCamMat, RDisCoef, R2, P2);
@@ -374,40 +395,54 @@ long QSProcessThreadFunc(CTCSys *QS)
 							perspectiveTransform(Rvec, R3D, Q);
 							LPoints.push_back(L3D[r]);
 							RPoints.push_back(R3D[r]);
+
+							// DEBUG
 							ofs << i << ", " << L3D[r].x << ", " << L3D[r].y << ", " << L3D[r].z << ", " << R3D[r].x << ", " << R3D[r].y << ", " << R3D[r].z << endl;
 						}
 
+						// If we've reached four good frames than move the x axis
 						if (count == 4) {
 							double xPos = approximateX(LPoints);
-							xPos -= xOffset;
+							xPos = (-xPos) + xOffset;
 							double yPos = 0;
 							Bounding(xPos, yPos);
 #ifdef USE_STAGE
 							QS->Move_X = xPos;
 							QS->Move_Y = yPos;
 							SetEvent(QS->QSMoveEvent);		// Signal the move event to move catcher. The event will be reset in the move thread.
+							xPos = 0.00;
+							yPos = 0.00;
 #endif
 						}
-						else if (count == 12) { // If balls leave picture than send new command
+
+						// If we've reached 12 good frames than move the x and y axis
+						else if (count == 12) {
 							double xPos = approximateX(LPoints);
 							double yPos = approximateY(LPoints);
-							xPos -= xOffset;
-							yPos -= yOffset;
+							xPos = (-xPos) + xOffset;
+							yPos = (-yPos) + yOffset;
 							Bounding(xPos, yPos);
 #ifdef USE_STAGE
 							QS->Move_X = xPos;
 							QS->Move_Y = yPos;
 							SetEvent(QS->QSMoveEvent);		// Signal the move event to move catcher. The event will be reset in the move thread.
+							xPos = 0.00;
+							yPos = 0.00;
 #endif
+							// If we're done calculating trajectory, initiate time delay
 							PositionReseting = true;
 						}
 					}
-				}				
-				else if(foundfirst && !PositionReseting){	// If it gets a frame without the ball before finishing calculations
+				}
+
+				// If the ball leaves the frame before reaching 12 good frames, calculate anyway
+				else if(foundfirst && !PositionReseting){
+					// Undistort and rectify the points
 					vector<Point2f> LCentUndist, RCentUndist;
 					vector<Point3f> LPoints, RPoints;	// Stores points for 3D location
 					undistortPoints(LCent, LCentUndist, LCamMat, LDisCoef, R1, P1);
 					undistortPoints(RCent, RCentUndist, RCamMat, RDisCoef, R2, P2);
+
 					// Create vectors of point3f(x, y, disparity)
 					vector<Point3f> Lvec, Rvec;
 					for (int r = 0; r < LCentUndist.size(); r++) {
@@ -420,17 +455,25 @@ long QSProcessThreadFunc(CTCSys *QS)
 						perspectiveTransform(Rvec, R3D, Q);
 						LPoints.push_back(L3D[r]);
 						RPoints.push_back(R3D[r]);
+
+						// DEBUG
+						ofs << i << ", " << L3D[r].x << ", " << L3D[r].y << ", " << L3D[r].z << ", " << R3D[r].x << ", " << R3D[r].y << ", " << R3D[r].z << endl;
 					}
+					// Tell the stage to reset (initiate time delay)
 					PositionReseting = true;
+
+					// Move x and y axis
 					double xPos = approximateX(LPoints);
 					double yPos = approximateY(LPoints);
-					xPos -= xOffset;
-					yPos -= yOffset;
+					xPos = (-xPos) + xOffset;
+					yPos = (-(yPos-yOffset));
 					Bounding(xPos, yPos);
 #ifdef USE_STAGE
 					QS->Move_X = xPos;
 					QS->Move_Y = yPos;
 					SetEvent(QS->QSMoveEvent);		// Signal the move event to move catcher. The event will be reset in the move thread.
+					xPos = 0.00;
+					yPos = 0.00;
 #endif
 				}
 			}
