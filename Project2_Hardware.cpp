@@ -204,9 +204,13 @@ long QSProcessThreadFunc(CTCSys *QS)
 	SimpleBlobDetector::Params params;
 	params.minDistBetweenBlobs = 20;
 	params.filterByArea = true;
-	params.minArea = 8;
-	params.maxArea = 400;
+	params.minArea = 60;
+	params.maxArea = 7000;
 	params.blobColor = 255;
+	params.filterByConvexity = false;
+	params.filterByCircularity = false;
+	params.filterByInertia = false;
+	
 
 	char    str[32];
     long	FrameStamp;
@@ -305,30 +309,77 @@ long QSProcessThreadFunc(CTCSys *QS)
 				getRectSubPix(ROrig, ROISize, RROICent, ROrigCrop);
 
 				// Remove background from image
-				LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
-				RImThresh = RImCrop - ROrigCrop;
+				//LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
+				//RImThresh = RImCrop - ROrigCrop;
+				absdiff(LImCrop, LOrigCrop, LImThresh);
+				absdiff(RImCrop, ROrigCrop, RImThresh);
 
 				// Blur image to reduce noise
 				GaussianBlur(LImThresh, LImThresh, Size(9, 9), 2, 2);
 				GaussianBlur(RImThresh, RImThresh, Size(9, 9), 2, 2);
 
 				// Image Loaded, threshold image
-				threshold(LImThresh, LImThresh, 8, 255, THRESH_BINARY);
-				threshold(RImThresh, RImThresh, 8, 255, THRESH_BINARY);
+				//threshold(LImThresh, LImThresh, 8, 255, THRESH_BINARY);
+				//threshold(RImThresh, RImThresh, 8, 255, THRESH_BINARY);
+				inRange(LImThresh, Scalar(8), Scalar(180), LImThresh);
+				inRange(RImThresh, Scalar(8), Scalar(180), RImThresh);
+
 
 				// Find the White pixels
-				vector<KeyPoint> keypoints;
+				vector<KeyPoint> Lkeypoints, Rkeypoints;
 				Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
-				detector->detect(LImThresh, keypoints);
-				Mat im_with_keypoints;
-				drawKeypoints(LImThresh, keypoints, im_with_keypoints, Scalar(0, 255, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+				detector->detect(LImThresh, Lkeypoints);
+				detector->detect(RImThresh, Rkeypoints);
+#ifndef PTGREY
+				Mat Lim_with_keypoints, Rim_with_keypoints;
+				drawKeypoints(LImThresh, Lkeypoints, Lim_with_keypoints, Scalar(0, 255, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+				drawKeypoints(RImThresh, Rkeypoints, Rim_with_keypoints, Scalar(0, 255, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+#endif
 
-				if (keypoints.size() >= 1){
-					LROICent = Point2f(LROICent.x - (ROISize.width / 2) + keypoints[0].pt.x, LROICent.y - (ROISize.height / 2) + keypoints[0].pt.y);
-					//RROICent = Point2f(RROICent.x - (ROISize.width / 2) + RxCent, RROICent.y - (ROISize.height / 2) + RyCent);
+				if (Lkeypoints.size() >= 1){
+					LROICent = Point2f(LROICent.x - (ROISize.width / 2) + Lkeypoints[0].pt.x, LROICent.y - (ROISize.height / 2) + Lkeypoints[0].pt.y);
+					if (Lkeypoints[0].size >= (ROISize.width*0.4)){
+						ROISize = Size(ROISize.width * 1.5, ROISize.height *1.5);
+					}
+					if ((LROICent.x + (ROISize.width / 2)) >= 640){
+						LROICent.x = 640 - (ROISize.width / 2);
+					}
+					else if ((LROICent.x - (ROISize.width / 2)) <= 0){
+						LROICent.x = ROISize.width / 2;
+					}
+					if ((LROICent.y + (ROISize.height / 2)) >= 480){
+						LROICent.y = 480 - (ROISize.height / 2);
+					}
+					else if ((LROICent.y - (ROISize.height / 2)) <= 0){
+						LROICent.y = ROISize.height / 2;
+					}
 				}
-				
+				if (Rkeypoints.size() >= 1){
+					RROICent = Point2f(RROICent.x - (ROISize.width / 2) + Rkeypoints[0].pt.x, RROICent.y - (ROISize.height / 2) + Rkeypoints[0].pt.y);
+					if ((RROICent.x + (ROISize.width / 2)) >= 640){
+						RROICent.x = 640 - (ROISize.width / 2);
+					}
+					else if ((RROICent.x - (ROISize.width / 2)) <= 0){
+						RROICent.x = ROISize.width / 2;
+					}
+					if ((RROICent.y + (ROISize.height / 2)) >= 480){
+						RROICent.y = 480 - (ROISize.height / 2);
+					}
+					else if ((RROICent.y - (ROISize.height / 2)) <= 0){
+						RROICent.y = ROISize.height / 2;
+					}
+				}
 
+				cvtColor(Im[0], Im[0], CV_GRAY2BGR);
+				cvtColor(Im[1], Im[1], CV_GRAY2BGR);
+				//rectangle(Im[0], Rect(LROICent.x, LROICent.y, ROISize.width, ROISize.height), Scalar(0, 0, 255), 2);
+				if (Lkeypoints.size() >= 1){
+					Lim_with_keypoints.copyTo(Im[0](Rect(LROICent.x - (ROISize.width / 2), LROICent.y - (ROISize.height / 2), Lim_with_keypoints.cols, Lim_with_keypoints.rows)));
+				}
+				//rectangle(Im[1], Rect(RROICent.x, RROICent.y, ROISize.width, ROISize.height), Scalar(0, 0, 255), 2);
+				if (Rkeypoints.size() >= 1){
+					Rim_with_keypoints.copyTo(Im[1](Rect(RROICent.x - (ROISize.width / 2), RROICent.y - (ROISize.height / 2), Rim_with_keypoints.cols, Rim_with_keypoints.rows)));
+				}
 				Mat LWhiteLocations, RWhiteLocations;
 				findNonZero(LImThresh, LWhiteLocations);
 				findNonZero(RImThresh, RWhiteLocations);
@@ -351,7 +402,7 @@ long QSProcessThreadFunc(CTCSys *QS)
 						calibrated = false;
 
 						// Clear center points
-						vector<Point2f> empt1, empt2;		// Stores points for right and left undistortion
+						vector<Point2f> empt1, empt2;		// Empty points to replace center points
 						LCent.swap(empt1);
 						RCent.swap(empt2);
 #ifndef PTGREY
