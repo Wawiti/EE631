@@ -191,12 +191,22 @@ long QSProcessThreadFunc(CTCSys *QS)
 	//Rect myROIR(210, 10, 150, 250);		// x, y, width, height
 	Rect myROIL(300, 10, 140, 250);		// x, y, width, height THIS ONE WORKS BETTER
 	Rect myROIR(210, 10, 140, 250);		// x, y, width, height
+	Point2f LROICent = Point2f(370, 90);
+	Point2f RROICent = Point2f(300, 90);
+	Size ROISize = Size(100, 100);
 	
 	int count = 0;						// Number of frames with ball in both
 	int resetcount = 0;					// number of frames to reset
 
-	float xOffset = 13;			// THESE MAY NEED TO BE CHANGED TO FIT ACTUAL REAL LIFE !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	float yOffset = 9;
+	float xOffset = 9;			// THESE MAY NEED TO BE CHANGED TO FIT ACTUAL REAL LIFE !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	float yOffset = 21;
+
+	SimpleBlobDetector::Params params;
+	params.minDistBetweenBlobs = 20;
+	params.filterByArea = true;
+	params.minArea = 8;
+	params.maxArea = 400;
+	params.blobColor = 255;
 
 	char    str[32];
     long	FrameStamp;
@@ -262,7 +272,7 @@ long QSProcessThreadFunc(CTCSys *QS)
 				Im[0] = imread(LPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 				Im[1] = imread(RPathOrig, CV_LOAD_IMAGE_GRAYSCALE);
 				imCnt++;
-				if (imCnt >= 50) {
+				if (imCnt >= 90) {
 					system("pause");	// Stop after 100 frames
 				}
 #endif
@@ -272,8 +282,9 @@ long QSProcessThreadFunc(CTCSys *QS)
 			if (!calibrated) {
 				count++;
 				if (count >= 5) {	// Don't grab the first frame, wait a bit for things to stabilize
-					Im[0](myROIL).copyTo(LOrigCrop);
-					Im[1](myROIR).copyTo(ROrigCrop);
+					Im[0].copyTo(LOrig);
+					Im[1].copyTo(ROrig);
+
 					calibrated = true;
 					count = 0;
 				}
@@ -284,8 +295,14 @@ long QSProcessThreadFunc(CTCSys *QS)
 				Mat RImCrop, RImThresh;
 
 				// Image Loaded, crop
-				Im[0](myROIL).copyTo(LImCrop);
-				Im[1](myROIR).copyTo(RImCrop);
+				//MOGMaskL = QS->IR.ProcBuf[0];	// copy image to output (allow to see final image)
+				//MOGMaskR = QS->IR.ProcBuf[1];
+				Im[0].copyTo(LImCrop);
+				Im[1].copyTo(RImCrop);
+				getRectSubPix(LImCrop, ROISize, LROICent, LImCrop);
+				getRectSubPix(RImCrop, ROISize, RROICent, RImCrop);
+				getRectSubPix(LOrig, ROISize, LROICent, LOrigCrop);
+				getRectSubPix(ROrig, ROISize, RROICent, ROrigCrop);
 
 				// Remove background from image
 				LImThresh = LImCrop - LOrigCrop;	// Subtract very first image for background removal
@@ -300,6 +317,18 @@ long QSProcessThreadFunc(CTCSys *QS)
 				threshold(RImThresh, RImThresh, 8, 255, THRESH_BINARY);
 
 				// Find the White pixels
+				vector<KeyPoint> keypoints;
+				Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
+				detector->detect(LImThresh, keypoints);
+				Mat im_with_keypoints;
+				drawKeypoints(LImThresh, keypoints, im_with_keypoints, Scalar(0, 255, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+				if (keypoints.size() >= 1){
+					LROICent = Point2f(LROICent.x - (ROISize.width / 2) + keypoints[0].pt.x, LROICent.y - (ROISize.height / 2) + keypoints[0].pt.y);
+					//RROICent = Point2f(RROICent.x - (ROISize.width / 2) + RxCent, RROICent.y - (ROISize.height / 2) + RyCent);
+				}
+				
+
 				Mat LWhiteLocations, RWhiteLocations;
 				findNonZero(LImThresh, LWhiteLocations);
 				findNonZero(RImThresh, RWhiteLocations);
