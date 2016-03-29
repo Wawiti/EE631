@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include <cmath>
 
 using namespace cv;
 using namespace cv::xfeatures2d;
@@ -70,13 +71,27 @@ int findMatches(Mat img1, Mat img2, vector<KeyPoint>& keypoints1, vector<KeyPoin
 
 
 int findExpansion(vector<Point2f>& finalPoint1, vector<Point2f>& finalPoint2) {
-	double avg = finalPoint2[0].x / finalPoint1[0].x;
+	double avg = 1+std::abs(1-(sqrt(pow(finalPoint2[0].x,2) + pow(finalPoint2[0].y,2)) / sqrt(pow(finalPoint1[0].x,2) + pow(finalPoint1[0].y,2))));
 	for (int idx = 1; idx < finalPoint1.size(); idx++) {
-		double a2 = finalPoint2[idx].x / finalPoint1[idx].x;
-		cout << a2 << endl;
+		double a2 = 1+std::abs(1- sqrt(pow(finalPoint2[idx].x, 2) + pow(finalPoint2[idx].y, 2)) / sqrt(pow(finalPoint1[idx].x, 2) + pow(finalPoint1[idx].y, 2)));
 		avg = (avg + a2) / 2;
 	}
 	//cout << avg << endl;
+	return 0;
+}
+
+
+int findMinMaxX(vector<Point2f>& finalPoint1, vector<Point2f>& finalPoint2) {
+	double minimum = 1000, maximum = 0;
+	for (int idx = 0; idx < finalPoint1.size(); idx++) {
+		if (finalPoint1[idx].x < minimum)
+			minimum = finalPoint1[idx].x;
+		else if (finalPoint1[idx].x > maximum)
+			maximum = finalPoint1[idx].x;
+	}
+	double width = maximum - minimum;
+	double distance = 825.09 * (59 / width);
+	cout << distance << endl;
 	return 0;
 }
 
@@ -140,8 +155,9 @@ int main() {
 
 		vector<Point2f> finalPoint1, finalPoint2;
 		vector<KeyPoint> keypointsOut;
-		errorCode = findMatches(img1, img2, keypoints1, keypoints2, descriptors1, descriptors2, matcher, finalPoint1, finalPoint2, 1-1.8*(1/((double)i)), keypointsOut);
+		errorCode = findMatches(img1, img2, keypoints1, keypoints2, descriptors1, descriptors2, matcher, finalPoint1, finalPoint2, 1 - 1.8*(1 / ((double)i)), keypointsOut);
 		errorCode = findExpansion(finalPoint1, finalPoint2);
+		errorCode = findMinMaxX(finalPoint1, finalPoint2);
 		//errorCode = drawExpansion(img1, img2, finalPoint1, finalPoint2);
 
 		// Resetting variable for next loop
