@@ -21,24 +21,112 @@ using namespace cv;
 using namespace cv::xfeatures2d;
 using namespace std;
 
-#define DEBUG
+//#define DEBUG
 
-int main() {
+
+int findMatches(Mat img1, Mat img2, vector<KeyPoint>& keypoints1, vector<KeyPoint>& keypoints2, Mat descriptors1, Mat descriptors2, BFMatcher matcher, vector<Point2f>& finalPoint1, 
+	vector<Point2f>& finalPoint2, double passRatio, vector<KeyPoint>& keypointsOut) {
+	vector<DMatch> matches;
+	matcher.match(descriptors1, descriptors2, matches);
+	vector<char> matchesMask(matches.size(), 0);
+
+	// Find max distance
+	double maxDistance = 0;
+	for (int idx = 0; idx < matches.size(); idx++) {
+		if (matches[idx].distance > maxDistance)
+			maxDistance = matches[idx].distance;
+	}
+
+	// Cut out 1-passratio % or points
+	for (int idx = 0; idx < matches.size(); idx++) {
+		if (matches[idx].distance <= (maxDistance*passRatio))
+			matchesMask[idx] = 1;
+	}
+
 #ifdef DEBUG
 	namedWindow("Matches", CV_WINDOW_AUTOSIZE);
+	Mat img_matches;
+	drawMatches(img1, keypoints1, img2, keypoints2, matches, img_matches, Scalar::all(-1), Scalar::all(-1), matchesMask, 2);
+
+	while (1) {
+		imshow("Matches", img_matches);
+		int keypress = waitKey(30);
+		if (keypress == 32) {
+			break;
+		}
+	}
 #endif
+
+	// Output final points as well as a new vector of keypoints
+	for (int idx = 0; idx < matches.size(); idx++) {
+		if (matchesMask[idx]) {
+			finalPoint1.push_back(keypoints1[matches[idx].queryIdx].pt);
+			finalPoint2.push_back(keypoints2[matches[idx].trainIdx].pt);
+			keypointsOut.push_back(keypoints2[matches[idx].trainIdx]);
+		}
+	}
+	return 0;
+}
+
+
+int findExpansion(vector<Point2f>& finalPoint1, vector<Point2f>& finalPoint2) {
+	double avg = finalPoint2[0].x / finalPoint1[0].x;
+	for (int idx = 1; idx < finalPoint1.size(); idx++) {
+		double a2 = finalPoint2[idx].x / finalPoint1[idx].x;
+		cout << a2 << endl;
+		avg = (avg + a2) / 2;
+	}
+	//cout << avg << endl;
+	return 0;
+}
+
+
+int drawExpansion(Mat img1, Mat img2, vector<Point2f>& finalPoint1, vector<Point2f>& finalPoint2) {
+	Mat imOut;
+	img1.copyTo(imOut);
+	for (int idx = 0; idx < finalPoint1.size(); idx++) {
+		arrowedLine(imOut, finalPoint1[idx], finalPoint2[idx], Scalar(0, 0, 255), 1);
+	}
+	namedWindow("flow", CV_WINDOW_AUTOSIZE);
+	while (1) {
+		imshow("flow", imOut);
+		int keypress = waitKey(30);
+		if (keypress == 32) {
+			break;
+		}
+	}
+
+	return 0;
+}
+
+
+int main() {
+	int errorCode = 0;
+	ofstream ofs;
+	ofs.open("HW6Task1.txt");
 	
 	// CREATE A DETECTOR AND A MATCHER
 	Ptr<SURF> detector = SURF::create(300);
 	BFMatcher matcher = BFMatcher(NORM_L2, true);
 
-	for (int i = 1; i < 18; i++) {
+	Mat img1, descriptors1;
+	vector<KeyPoint> keypoints1;
+	imread("Images//T" + to_string(1) + ".jpg", IMREAD_GRAYSCALE).copyTo(img1);
+	vector<KeyPoint> keypointsTemp;
+	detector->detect(img1, keypointsTemp, Mat());
+	for (int idx = 0; idx < keypointsTemp.size(); idx++) {
+		if (keypointsTemp[idx].pt.x >= 282 && keypointsTemp[idx].pt.x <= 370 && keypointsTemp[idx].pt.y >= 160 && keypointsTemp[idx].pt.y <= 360) {
+			keypoints1.push_back(keypointsTemp[idx]);
+		}
+	}
+	detector->compute(img1, keypoints1, descriptors1);
+
+	for (int i = 2; i < 18; i++) {
 		// Read in images for processing
-		Mat img1, img2;
+		Mat img2;
 		String path = "Images//T";
-		imread(path + to_string(i) + ".jpg", IMREAD_GRAYSCALE).copyTo(img1);
-		imread(path + to_string(i + 1) + ".jpg", IMREAD_GRAYSCALE).copyTo(img2);
-		if (img1.empty() || img2.empty()) {
+		imread(path + to_string(i) + ".jpg", IMREAD_GRAYSCALE).copyTo(img2);
+		if (img2.empty()) {
 			cout << "images didn't read correctly, please try again" << endl;
 			cout << "     crashed while reading: " << path + to_string(i) << endl;
 			cout << "     and: " << path + to_string(i) << endl;
@@ -46,53 +134,24 @@ int main() {
 			return -1;
 		}
 
-		vector<KeyPoint> keypoints1, keypoints2;
-		vector<DMatch> matches;
-		Mat descriptors1, descriptors2;
-
-		// Find all keypoints and find matching points
-		detector->detectAndCompute(img1, Mat(), keypoints1, descriptors1);
+		Mat descriptors2;
+		vector<KeyPoint> keypoints2;
 		detector->detectAndCompute(img2, Mat(), keypoints2, descriptors2);
-		matcher.match(descriptors1, descriptors2, matches);
 
-		// Filter large hamming distances
-		vector<char> matchesMask(matches.size(), 0);
-		double maxDistance = 0;
-		for (int idx = 0; idx < matches.size(); idx++) {
-			if (matches[idx].distance > maxDistance)
-				maxDistance = matches[idx].distance;
-		}
-		for (int idx = 0; idx < matches.size(); idx++) {
-			if (matches[idx].distance < (maxDistance*0.1))
-				matchesMask[idx] = 1;
-		}
-
-#ifdef DEBUG
-		cout << "FOUND " << keypoints1.size() << " keypoints on the first image" << endl;
-		cout << "FOUND " << keypoints2.size() << " keypoints on the second image" << endl;
-
-		Mat img_matches;
-		//drawMatches(img1, keypoints1, img2, keypoints2, matches, img_matches);
-		drawMatches(img1, keypoints1, img2, keypoints2, matches, img_matches, Scalar::all(-1), Scalar::all(-1), matchesMask, 2);
-
-		while (1) {
-			imshow("Matches", img_matches);
-			int keypress = waitKey(30);
-			if (keypress == 32) {
-				break;
-			}
-		}
-#endif
-		
-		// Return vectors of good points
 		vector<Point2f> finalPoint1, finalPoint2;
-		for (int idx = 0; idx < matches.size(); idx++) {
-			if (matchesMask[idx]) {
-				finalPoint1.push_back(keypoints1[matches[idx].queryIdx].pt);
-				finalPoint2.push_back(keypoints2[matches[idx].trainIdx].pt);
-			}
-		}
+		vector<KeyPoint> keypointsOut;
+		errorCode = findMatches(img1, img2, keypoints1, keypoints2, descriptors1, descriptors2, matcher, finalPoint1, finalPoint2, 1-1.8*(1/((double)i)), keypointsOut);
+		errorCode = findExpansion(finalPoint1, finalPoint2);
+		//errorCode = drawExpansion(img1, img2, finalPoint1, finalPoint2);
+
+		// Resetting variable for next loop
+		keypoints1 = keypointsOut;
+		detector->compute(img2, keypoints1, descriptors1);
+		img2.copyTo(img1);
+		
+
 	}
-	
-	return 0;
+	ofs.close();
+	system("pause");
+	return errorCode;	// 0 is fine, -1 means failure somewhere
 }
