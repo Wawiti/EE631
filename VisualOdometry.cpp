@@ -25,6 +25,10 @@ using namespace cv::xfeatures2d;
 using namespace std;
 
 
+//#define DEBUG1
+#define DEBUG2
+
+
 //===================================================================
 //						IMAGE LOADING....
 //===================================================================
@@ -58,18 +62,95 @@ void loadImgs(String foldername, int idx, Mat& img1, Mat& img2,
 //===================================================================
 //					FEATURE MATCHING (SURF)
 //===================================================================
+void findkeypoints(Mat img, vector<KeyPoint>& keypoints, 
+	Mat& descriptors) {
 
+	Ptr<SURF> detector = SURF::create(300);
+	detector->detectAndCompute(img, Mat(), keypoints, descriptors);
+}
 
 
 
 //===================================================================
-//					FEATURE MATCHING (SURF)
+//					 MATCHING (BFMATCHER)
+//===================================================================
+void matchBestPoints(vector<DMatch>& matches, Mat desc1, Mat desc2, 
+	double pass, Mat img1, Mat img2, vector<KeyPoint> key1, 
+	vector<KeyPoint> key2, vector<Point2f> fp1, vector<Point2f> fp2) {
+
+	BFMatcher matcher = BFMatcher(4, true);
+	matcher.match(desc1, desc2, matches);
+
+	// find max euclidean distance in matches
+	double maxDistance = 0;
+	for (int i = 0; i < matches.size(); i++) {
+		if (matches[i].distance > maxDistance)
+			maxDistance = matches[i].distance;
+	}
+
+	// Make a mask for passing matches
+	vector<char> matchesMask(matches.size(), 0);
+	for (int i = 0; i < matches.size(); i++) {
+		if (matches[i].distance < (maxDistance*pass))
+			matchesMask[i] = 1;
+	}
+
+	for (int idx = 0; idx < matchesMask.size(); idx++) {
+		if (matchesMask[idx]) {
+			fp1.push_back(key1[matches[idx].queryIdx].pt);
+			fp2.push_back(key2[matches[idx].trainIdx].pt);
+		}
+	}
+
+#ifdef DEBUG1
+	namedWindow("Matches", CV_WINDOW_AUTOSIZE);
+	Mat img_matches;
+	drawMatches(img1, key1, img2, key2, matches, img_matches, 
+		Scalar::all(-1), Scalar::all(-1), matchesMask, 2);
+
+	//while (1) {
+		imshow("Matches", img_matches);
+		int keypress = waitKey(5);
+		//if (keypress == 32) {
+		//	break;
+		//}
+	//}
+#endif
+#ifdef DEBUG2
+		namedWindow("Matches", CV_WINDOW_AUTOSIZE);
+		Mat img_matches;
+		img1.copyTo(img_matches);
+		cvtColor(img_matches, img_matches, CV_GRAY2RGB);
+		for (int i = 0; i < fp1.size(); i++) {
+			arrowedLine(img_matches, fp1[i], fp2[i], 
+				Scalar(0, 0, 255), 2);
+		}
+		imshow("Matches", img_matches);
+		waitKey(5);
+#endif
+}
+
+
+
+//===================================================================
+//			  CALCULATE TRANSLATION AND ROTATION
 //===================================================================
 
 void calculateTandR(String foldername, int idx) {
 	// Load first four images
 	Mat img1, img2, img3, img4;
 	loadImgs(foldername, idx, img1, img2, img3, img4);
+
+	vector<KeyPoint> keypoints1, keypoints2;
+	Mat descriptors1, descriptors2;
+	findkeypoints(img1, keypoints1, descriptors1);
+	findkeypoints(img2, keypoints2, descriptors2);
+
+	vector<DMatch> matches;
+	vector<Point2f> finalPoint1, finalPoint2;
+	double pass = 0.1;
+	matchBestPoints(matches, descriptors1, descriptors2, pass, img1,
+		img2, keypoints1, keypoints2, finalPoint1, finalPoint2);
 }
 
 
